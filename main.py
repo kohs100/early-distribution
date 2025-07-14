@@ -1,7 +1,8 @@
-from typing import Literal, Tuple, List, Dict, cast, Optional, Type
+from typing import Literal, Tuple, List, Dict, cast, Optional
 from dataclasses import dataclass
-from types import TracebackType
 import json
+
+from util import PrettyPrinter
 
 DAY = Literal["SAT", "SUN"]
 POS = Literal["E", "W"]
@@ -13,31 +14,7 @@ DAY_POS: List[Tuple[DAY, POS]] = [
     ("SUN", "E"),
     ("SUN", "W"),
 ]
-DAYS = ["SAT", "SUN"]
-POSS = ["E", "W"]
 
-class PrettyPrinter:
-    def __init__(self, indent_lvl: int=0, indentation: str="  "):
-        self.indent_lvl = indent_lvl
-        self.indentation = indentation
-
-    def print(self, *msg: str, end: str="\n"):
-        indent = self.indentation * self.indent_lvl
-        print(indent, end="")
-        print(*msg, end=end)
-
-    def __enter__(self) -> "PrettyPrinter":
-        self.indent_lvl += 1
-        return self
-
-    def __exit__(
-        self,
-        exc_type: Optional[Type[BaseException]],
-        exc_value: Optional[BaseException],
-        traceback: Optional[TracebackType]
-    ) -> Optional[bool]:
-        self.indent_lvl -= 1
-        return None
 
 @dataclass
 class Ticket:
@@ -56,13 +33,11 @@ class Ticket:
         daypos = f"{"1일차" if self.day == "SAT" else "2일차"} {"동관" if self.pos == "E" else "서관"}"
         return f"{daypos} {str(self)}"
 
+
 @dataclass
 class Human:
     name: str
     need: Dict[DAY, POS]
-
-    def get_pos_at(self, day: DAY) -> POS:
-        return self.need[day]
 
 
 def parse_num_tickets(num_tickets: List[str], allow_zero: bool) -> TicketTuple:
@@ -162,22 +137,17 @@ class TicketPossession:
 
         self.tickets_left_ids: set[int] = set(range(len(tickets)))
         self.possession: Dict[str, List[int]] = {name: [] for name in human_dict}
-        self.possessed_by: Dict[int, Optional[str]] = {
-            i: None for i, _tkt in enumerate(tickets)
-        }
 
     def take_ticket(self, name: str, tid: int):
         assert name in self.human_dict
         assert tid < len(self.tickets)
 
         assert tid not in self.possession[name], f"{tid} already in {name}"
-        assert self.possessed_by[tid] is None
 
         assert tid in self.tickets_left_ids
 
         self.tickets_left_ids.remove(tid)
         self.possession[name].append(tid)
-        self.possessed_by[tid] = name
 
     def find_ticket_one(
         self,
@@ -219,7 +189,6 @@ class TicketPossession:
                     tid = self.find_ticket_one(name, name, day, pos)
                     if tid is None:
                         continue
-                    print(f"{name} taken self {day} {pos}")
                     self.take_ticket(name, tid)
                     assert self.has_ticket(name, day, pos)
 
@@ -255,7 +224,9 @@ class TicketPossession:
                     need_tickets.append(name)
 
             acc = len(left_tickets) - len(need_tickets)
-            print(f"{"1일차" if day == "SAT" else "2일차"} {"동관" if pos == "E" else "서관"}: {acc}")
+            print(
+                f"{"1일차" if day == "SAT" else "2일차"} {"동관" if pos == "E" else "서관"}: {acc}"
+            )
             with pp:
                 if len(left_tickets) > 0:
                     left_list = ", ".join(map(str, left_tickets))
@@ -269,13 +240,12 @@ class TicketPossession:
 
     def dump(self, path: str):
         pretty_data: Dict[str, List[str]] = {
-            name: [
-                self.tickets[tid].to_string()
-                for tid in human
-            ] for name, human in self.possession.items()
+            name: [self.tickets[tid].to_string() for tid in human]
+            for name, human in self.possession.items()
         }
         with open(path, "wt") as f:
             json.dump(pretty_data, f, ensure_ascii=False, indent=2)
+
 
 def main():
     human_dict = parse_app()

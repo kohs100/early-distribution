@@ -30,7 +30,7 @@ class Ticket:
             return f"[{self.applied_by} -> {self.applied_for}]"
 
     def to_string(self) -> str:
-        daypos = f"{"1일차" if self.day == "SAT" else "2일차"} {"동관" if self.pos == "E" else "서관"}"
+        daypos = f'{"1일차" if self.day == "SAT" else "2일차"} {"동관" if self.pos == "E" else "서관"}'
         return f"{daypos} {str(self)}"
 
 
@@ -108,6 +108,23 @@ def parse_app2(human_dict: Dict[str, Human]):
                     f"E: {applied_for} received {igo2} by {applied_by} but wants {go2} in sunday"
                 )
 
+def parse_out(human_dict: Dict[str, Human]):
+    with open("data/outside.tsv", "rt") as f:
+        for line in f:
+            line = line.strip()
+            if len(line) == 0:
+                continue
+            [name, go1, go2] = line.split("\t")
+            assert go1 in ("E", "W", "X") and go2 in ("E", "W", "X")
+
+            needs: Dict[DAY, POS] = {}
+            if go1 in ("E", "W"):
+                needs["SAT"] = go1
+            if go2 in ("E", "W"):
+                needs["SUN"] = go2
+
+            assert name not in human_dict
+            human_dict[name] = Human(name, needs)
 
 def parse_result(human_dict: Dict[str, Human]) -> List[Ticket]:
     tickets: List[Ticket] = []
@@ -225,7 +242,7 @@ class TicketPossession:
 
             acc = len(left_tickets) - len(need_tickets)
             print(
-                f"{"1일차" if day == "SAT" else "2일차"} {"동관" if pos == "E" else "서관"}: {acc}"
+                f'{"1일차" if day == "SAT" else "2일차"} {"동관" if pos == "E" else "서관"}: {acc}'
             )
             with pp:
                 if len(left_tickets) > 0:
@@ -250,11 +267,12 @@ class TicketPossession:
 def main():
     human_dict = parse_app()
     parse_app2(human_dict)
+    parse_out(human_dict)
     tickets = parse_result(human_dict)
 
     possession = TicketPossession(human_dict, tickets)
     possession.process_take_self()
-    possession.pretty_print("자기꺼 가져간 뒤 상태")
+    # possession.pretty_print("자기꺼 가져간 뒤 상태")
     possession.process_take_for_self()
     possession.pretty_print("자기명의 가져간 뒤 상태")
 
